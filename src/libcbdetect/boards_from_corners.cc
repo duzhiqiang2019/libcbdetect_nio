@@ -39,6 +39,7 @@
 #include <iostream>
 #include <random>
 #include <vector>
+#include <unordered_map>
 
 #include <opencv2/opencv.hpp>
 
@@ -50,6 +51,33 @@
 #include "libcbdetect/init_board.h"
 
 namespace cbdetect {
+/*
+int directional_neighbor_df(const Corner& corners, const std::vector<int>& used,
+                         int idx, const cv::Point2d& v, double& min_dist) {
+  //创建角点数量大小的vector,并用1e10初始化
+  std::vector<double> dists(corners.p.size(), 1e10);
+
+  // distances
+  for(int i = 0; i < corners.p.size(); ++i) {
+    if(used[i]) {
+      continue;
+    }
+    cv::Point2d dir   = corners.p[i] - corners.p[idx];
+    double dist_point = dir.x * v.x + dir.y * v.y;
+    dir               = dir - dist_point * v;
+    double dist_edge  = cv::norm(dir);
+    double dist       = dist_point + 5 * dist_edge;
+    if(dist_point >= 0) {
+      dists[i] = dist;
+    }
+  }
+
+  // find best neighbor
+  int neighbor_idx = std::min_element(dists.begin(), dists.end()) - dists.begin();
+  min_dist   = dists[neighbor_idx];
+  return neighbor_idx;
+}
+*/
 
 void debug_grow_process(const cv::Mat& img, const Corner& corners, const Board& board,
                         const std::vector<cv::Point2i>& proposal, int direction, bool type) {
@@ -100,20 +128,29 @@ void debug_grow_process(const cv::Mat& img, const Corner& corners, const Board& 
 
 void boards_from_corners(const cv::Mat& img, const Corner& corners, std::vector<Board>& boards, const Params& params) {
   // intialize boards
+  //先将boards清空
   boards.clear();
+  //新创建一个board对象
   Board board;
+  //新建一个used数组，数组的大小与corners中角点的个数相同，初始化为0
   std::vector<int> used(corners.p.size(), 0);
 
+  //新建一个int类型的start,初始化为0
   int start = 0;
   if(!params.overlay) {
     // start from random index
+    //创建随机数
     std::default_random_engine e;
+    //取时间
     auto time = std::chrono::system_clock::now().time_since_epoch();
+    //将时间作为随机数种子
     e.seed(static_cast<unsigned long>(time.count()));
+    //使用随机数对start进行初始化
     start = e() % corners.p.size();
   }
 
   // for all seed corners do
+  //遍历所有的corners
   int n = 0;
   while(n++ < corners.p.size()) {
     // init 3x3 board from seed i
@@ -232,4 +269,104 @@ void boards_from_corners(const cv::Mat& img, const Corner& corners, std::vector<
   }
 }
 
+void boards_from_corners_df(const cv::Mat& img, const Corner& corners, std::vector<Board>& boards, const Params& params) 
+{
+  //新建corner用来存放非boards中的角点
+  Corner cornersNew;
+  Corner cornersNewLeftDown;
+  Corner cornersNewLeftUp;
+  Corner cornersNewRightDown;
+  Corner cornersNewRightUp;
+  //临时存放每个board
+  Board tempBoardleft;
+  Board tempBoardright;
+  tempBoardleft.idx = {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+  tempBoardright.idx = {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+  //创建哈希表用于筛选非boards中的角点
+  std::unordered_map<double,double> table;
+  //先将boards中的角点push进哈希表中
+  int raw = boards[0].idx.size();
+  int col = boards[0].idx[0].size();
+  for(int i = 1; i < raw - 1; i++)
+  {
+    for(int j = 1; j < col - 1; j++)
+    {
+      table[corners.p[boards[0].idx[i][j]].x] = corners.p[boards[0].idx[i][j]].y;
+    }
+  }
+  //遍历所有角点，如果哈希表中找不到该角点就将该角点放入cornersNew中
+  int num = 0;
+  for(int n = 0; n < corners.p.size(); n++)
+  {
+    if(table.find(corners.p[n].x) == table.end() || table[corners.p[n].x] != corners.p[n].y)
+    {
+      if(corners.p[n].y > 260 && corners.p[n].y < 550)
+      {
+        cornersNew.p.emplace_back(corners.p[n]);
+        //使用cornersNew中的v1来存储元素在原corners中的索引
+        cornersNew.r.emplace_back(n);
+      }
+    }
+  }
+  if(cornersNew.p.empty()) return;
+  //std::cout<<cornersNew.p.size()<<std::endl;
+  //遍历获得x坐标均值
+  double xMean = 0.0;
+  double yMean = 0.0;
+  for(int i = 0; i < cornersNew.p.size(); i++)
+  {
+      xMean += cornersNew.p[i].x;
+      yMean += cornersNew.p[i].y;
+  }
+  xMean /= cornersNew.p.size();
+  yMean /= cornersNew.p.size();
+  //根据x坐标的大小将角点分为左右两类
+  for(int i = 0; i < cornersNew.p.size(); i++)
+  {
+    if(cornersNew.p[i].x < xMean)
+    {
+      //用v1.x来表示上下
+      if(cornersNew.p[i].y < yMean )
+      {
+        cornersNewLeftUp.p.emplace_back(cornersNew.p[i]);
+        cornersNewLeftUp.r.emplace_back(cornersNew.r[i]);
+      }
+      if(cornersNew.p[i].y > yMean )
+      {
+        cornersNewLeftDown.p.emplace_back(cornersNew.p[i]);
+        cornersNewLeftDown.r.emplace_back(cornersNew.r[i]);
+      }
+    }
+    else
+    {
+       if(cornersNew.p[i].y < yMean )
+      {
+        cornersNewRightUp.p.emplace_back(cornersNew.p[i]);
+        cornersNewRightUp.r.emplace_back(cornersNew.r[i]);
+      }
+      if(cornersNew.p[i].y > yMean )
+      {
+        cornersNewRightDown.p.emplace_back(cornersNew.p[i]);
+        cornersNewRightDown.r.emplace_back(cornersNew.r[i]);
+      }
+    }
+  }
+  //std::cout<<cornersNewLeftUp.p.size()<<" "<<cornersNewLeftDown.p.size()<<" "<<cornersNewRightUp.p.size()<<" "<<cornersNewRightDown.p.size()<<std::endl;
+
+  tempBoardleft.idx[1][1] = cornersNewLeftDown.p[0].x < cornersNewLeftDown.p[1].x ? cornersNewLeftDown.r[0] : cornersNewLeftDown.r[1];
+  tempBoardleft.idx[2][1] = cornersNewLeftDown.p[0].x > cornersNewLeftDown.p[1].x ? cornersNewLeftDown.r[0] : cornersNewLeftDown.r[1];
+  tempBoardleft.idx[1][2] = cornersNewLeftUp.p[0].x < cornersNewLeftUp.p[1].x ? cornersNewLeftUp.r[0] : cornersNewLeftUp.r[1];
+  tempBoardleft.idx[2][2] = cornersNewLeftUp.p[0].x > cornersNewLeftUp.p[1].x ? cornersNewLeftUp.r[0] : cornersNewLeftUp.r[1];
+  tempBoardleft.num = 4;
+
+  tempBoardright.idx[1][1] = cornersNewRightDown.p[0].x < cornersNewRightDown.p[1].x ? cornersNewRightDown.r[0] : cornersNewRightDown.r[1];
+  tempBoardright.idx[2][1] = cornersNewRightDown.p[0].x > cornersNewRightDown.p[1].x ? cornersNewRightDown.r[0] : cornersNewRightDown.r[1];
+  tempBoardright.idx[1][2] = cornersNewRightUp.p[0].x < cornersNewRightUp.p[1].x ? cornersNewRightUp.r[0] : cornersNewRightUp.r[1];
+  tempBoardright.idx[2][2] = cornersNewRightUp.p[0].x > cornersNewRightUp.p[1].x ? cornersNewRightUp.r[0] : cornersNewRightUp.r[1];
+  tempBoardright.num = 4;
+
+  boards.emplace_back(tempBoardleft);
+  boards.emplace_back(tempBoardright);
+
+}
 } // namespace cbdetect

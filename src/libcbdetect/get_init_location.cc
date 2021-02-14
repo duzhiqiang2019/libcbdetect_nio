@@ -203,7 +203,7 @@ void localized_radon_transform(const cv::Mat& img_in, cv::Mat& img_out) {
     pixel = pixel * pixel;
   });
 }
-
+//获得角点的初始定位
 void get_init_location(const cv::Mat& img, const cv::Mat& img_du, const cv::Mat& img_dv,
                        Corner& corners, const Params& params) {
   DetectMethod detect_method = params.corner_type == MonkeySaddlePoint ? HessianResponse : params.detect_method;

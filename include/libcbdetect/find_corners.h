@@ -41,8 +41,8 @@
 #include <vector>
 
 #include <opencv2/opencv.hpp>
-
-#include "libcbdetect/config.h"
+#include "config.h"
+//#include "libcbdetect/config.h"
 
 namespace cbdetect {
 

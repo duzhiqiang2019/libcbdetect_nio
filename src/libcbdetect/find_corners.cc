@@ -128,9 +128,9 @@ void find_corners_reiszed(const cv::Mat& img, Corner& corners, const Params& par
     }
   }
 }
-
+//读取图片后首先进入find_corners函数
 void find_corners(const cv::Mat& img, Corner& corners, const Params& params) {
-  // clear old data
+  // 首先清除corner中的旧数据
   corners.p.clear();
   corners.r.clear();
   corners.v1.clear();
@@ -138,7 +138,7 @@ void find_corners(const cv::Mat& img, Corner& corners, const Params& params) {
   corners.v3.clear();
   corners.score.clear();
 
-  // convert to double grayscale image
+  // 转化为双精度的灰度图像
   cv::Mat img_norm;
   if(img.channels() == 3) {
 #if CV_VERSION_MAJOR >= 4
@@ -151,7 +151,7 @@ void find_corners(const cv::Mat& img, Corner& corners, const Params& params) {
     img.convertTo(img_norm, CV_64F, 1. / 255., 0);
   }
 
-  // normalize image and calculate gradients
+  // 归一化图像并计算梯度
   cv::Mat img_du, img_dv, img_angle, img_weight;
   image_normalization_and_gradients(img_norm, img_du, img_dv, img_angle, img_weight, params);
   if(params.show_debug_image && params.norm) {
@@ -161,18 +161,18 @@ void find_corners(const cv::Mat& img, Corner& corners, const Params& params) {
     cv::waitKey();
   }
 
-  // get corner's initial locaiton
+  // 获得角点的初始定位
   get_init_location(img_norm, img_du, img_dv, corners, params);
   if(corners.p.empty()) {
     return;
   }
+  //params中show_processing初始化为true,每次执行都会在终端打印输出角点初始定位的数量
   if(params.show_processing) {
     printf("Initializing conres (%d x %d) ... %lu\n", img_norm.cols, img_norm.rows, corners.p.size());
   }
   if(params.show_debug_image) {
     plot_corners(img, corners.p, "init location");
   }
-
   // pre-filter corners according to zero crossings
   filter_corners(img_norm, img_angle, img_weight, corners, params);
   if(params.show_processing) {
@@ -200,7 +200,7 @@ void find_corners(const cv::Mat& img, Corner& corners, const Params& params) {
     plot_corners(img, corners.p, "merge corners");
   }
 
-  // polynomial fit
+  // 多项式拟合
   if(params.polynomial_fit) {
     polynomial_fit(img_norm, corners, params);
     if(params.show_processing) {

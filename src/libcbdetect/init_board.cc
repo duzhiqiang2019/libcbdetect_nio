@@ -42,6 +42,7 @@ namespace cbdetect {
 
 int directional_neighbor(const Corner& corners, const std::vector<int>& used,
                          int idx, const cv::Point2d& v, double& min_dist) {
+  //创建角点数量大小的vector,并用1e10初始化
   std::vector<double> dists(corners.p.size(), 1e10);
 
   // distances
@@ -68,14 +69,18 @@ int directional_neighbor(const Corner& corners, const std::vector<int>& used,
 bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int idx) {
   board.idx.clear();
   // return if not enough corners
+  //如果角点的数量小于9个就返回fasle
   if(corners.p.size() < 9) {
     return false;
   }
 
   // init chessboard hypothesis
+  //初始化棋盘格
   board.idx = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
   // extract feature index and orientation (central element)
+  //提取中心元素的索引和方向
+  //v1向右为正，v2向下为正
   const cv::Point2d& v1 = corners.v1[idx];
   const cv::Point2d& v2 = corners.v3.empty() ? corners.v2[idx] : corners.v3[idx];
   board.idx[1][1]       = idx;
@@ -83,6 +88,7 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   double min_dist[8];
 
   // find left/right/top/bottom neighbors
+  //查找左、右、上、下四个方向上的最近邻
   board.idx[1][0]       = directional_neighbor(corners, used, idx, -v1, min_dist[0]);
   used[board.idx[1][0]] = 1;
   board.idx[1][2]       = directional_neighbor(corners, used, idx, v1, min_dist[1]);
@@ -93,6 +99,10 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   used[board.idx[2][1]] = 1;
 
   // find top-left/top-right/bottom-left/bottom-right neighbors
+  //查找左上、右上、左下、右下的最近邻
+  //左上：左侧近邻的上方最近点    上侧近邻的左方最近点
+  //如果两个方向查找到的点的索引相同，直接取tmp1
+  //如果两个方向查找到的点的索引不相同，比较两个点两个点距离左侧点和上侧点的距离差，谁小就将谁作为tmp1
   int tmp1, tmp2;
   double d1, d2, min_dist_tmp1, min_dist_tmp2;
   tmp1 = directional_neighbor(corners, used, board.idx[1][0], -v2, min_dist_tmp1);
@@ -111,6 +121,7 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   min_dist[4]     = min_dist_tmp1;
   used[tmp1]      = 1;
 
+  //右上最近邻的查找如法炮制
   tmp1 = directional_neighbor(corners, used, board.idx[1][2], -v2, min_dist_tmp1);
   tmp2 = directional_neighbor(corners, used, board.idx[0][1], v1, min_dist_tmp2);
   if(tmp1 != tmp2) {
@@ -126,7 +137,8 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   board.idx[0][2] = tmp1;
   min_dist[5]     = min_dist_tmp1;
   used[tmp1]      = 1;
-
+  
+  //左下最近邻的查找如法炮制
   tmp1 = directional_neighbor(corners, used, board.idx[1][0], v2, min_dist_tmp1);
   tmp2 = directional_neighbor(corners, used, board.idx[2][1], -v1, min_dist_tmp2);
   if(tmp1 != tmp2) {
@@ -143,6 +155,7 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   min_dist[6]     = min_dist_tmp1;
   used[tmp1]      = 1;
 
+  //右下最近邻的查找如法炮制
   tmp1 = directional_neighbor(corners, used, board.idx[1][2], v2, min_dist_tmp1);
   tmp2 = directional_neighbor(corners, used, board.idx[2][1], v1, min_dist_tmp2);
   if(tmp1 != tmp2) {
@@ -160,6 +173,9 @@ bool init_board(const Corner& corners, std::vector<int>& used, Board& board, int
   used[tmp1]      = 1;
 
   // initialization must be homogenously distributed
+  //初始化必须均匀分布
+  //遍历idx周围的8个最近邻的min_dist，如果有任何一个最近邻的min_dist与1e10非常接近，即没有找到最近邻，就将该idx清除，返回false
+  //这样做避免了随机获取的idx找到了图像边缘一圈
   for(int i = 0; i < 8; ++i) {
     if(std::abs(min_dist[i] - 1e10) < 1) {
       for(int jj = 0; jj < 3; ++jj) {

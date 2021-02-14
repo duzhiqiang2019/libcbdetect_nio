@@ -92,7 +92,7 @@ void box_filter(const cv::Mat& img, cv::Mat& blur_img, int kernel_size_x, int ke
     blur_img.at<double>(j, img.cols - 1) /= count;
   }
 }
-
+//图像归一化和梯度计算
 void image_normalization_and_gradients(cv::Mat& img, cv::Mat& img_du, cv::Mat& img_dv,
                                        cv::Mat& img_angle, cv::Mat& img_weight, const Params& params) {
   // normalize image

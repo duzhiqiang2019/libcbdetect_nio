@@ -39,14 +39,19 @@
 #define LIBCBDETECT_BOARD_FROM_CORNRES_H
 
 #include <vector>
+#include <unordered_map>
+
 
 #include <opencv2/opencv.hpp>
-
-#include "libcbdetect/config.h"
+#include"config.h"
+//#include "libcbdetect/config.h"
 
 namespace cbdetect {
 
 LIBCBDETECT_DLL_DECL void boards_from_corners(const cv::Mat& img, const Corner& corners,
+                                              std::vector<Board>& boards, const Params& params);
+
+LIBCBDETECT_DLL_DECL void boards_from_corners_df(const cv::Mat& img, const Corner& corners,
                                               std::vector<Board>& boards, const Params& params);
 
 }
