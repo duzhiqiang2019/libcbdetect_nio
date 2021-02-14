@@ -30,3 +30,4 @@ My calibration tool: [Libcalib](https://github.com/ftdlyc/libcalib)
 [3] Placht, S., Fürsattel, P., Mengue, E. A., Hofmann, H., Schaller, C., Balda, M., & Angelopoulou, E. (2014, September). Rochade: Robust checkerboard advanced detection for camera calibration. In European Conference on Computer Vision (pp. 766-779). Springer, Cham.  
 [4] Ha, H., Perdoch, M., Alismail, H., Kweon, I. S., & Sheikh, Y. (2017, October). Deltille Grids for Geometric Camera Calibration. In 2017 IEEE International Conference on Computer Vision (ICCV) (pp. 5354-5362). IEEE.  
 [5] Duda, A., & Frese, U. (2018, September). Accurate Detection and Localization of Checkerboard Corners for Calibration. In British Machine Vision Conference (BMCV), 2018.  
+# libcbdetect_nio
